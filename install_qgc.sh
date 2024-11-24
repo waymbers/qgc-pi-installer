@@ -36,7 +36,7 @@ fi
 
 # Check RAM and provide warnings if below 2GB
 mem_total=$(free -m | awk '/^Mem:/{print $2}')
-if [ $mem_total -lt 2048 ]; then
+if [ "$mem_total" -lt 2048 ]; then
     log "WARNING: Your system has less than 2GB RAM (${mem_total}MB detected)"
     log "Important notes for running with limited RAM:"
     log "- The compilation process will take longer"
@@ -44,17 +44,22 @@ if [ $mem_total -lt 2048 ]; then
     log "- The interface may be less responsive"
     log "- Consider increasing your swap space"
     log ""
-    read -p "Would you like to proceed with the installation? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log "Installation cancelled by user"
-        exit 1
-    fi
+    printf "Would you like to proceed with the installation? (y/n): "
+    read answer
+    case "$answer" in
+        [Yy]*)
+            log "Proceeding with installation..."
+            ;;
+        *)
+            log "Installation cancelled by user"
+            exit 1
+            ;;
+    esac
 fi
 
 # Check for minimum disk space
 disk_space=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
-if [ $disk_space -lt 10 ]; then
+if [ "$disk_space" -lt 10 ]; then
     log "ERROR: Insufficient disk space. Minimum 10GB free space required"
     exit 1
 fi
