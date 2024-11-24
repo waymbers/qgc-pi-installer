@@ -62,8 +62,11 @@ fi
 # Create log file
 touch qgc_install.log || { log "ERROR: Cannot create log file"; exit 1; }
 
-# Rest of your original script with error handling
-log "Starting QGroundControl installation..."
+# Download QGroundControl
+log "Downloading QGroundControl..."
+progress 5
+wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage -O /usr/local/bin/QGroundControl || { log "ERROR: Failed to download QGroundControl"; exit 1; }
+chmod +x /usr/local/bin/QGroundControl || { log "ERROR: Failed to set executable permissions"; exit 1; }
 
 # System update and upgrade
 log "Updating system packages..."
@@ -93,35 +96,15 @@ echo "vm.swappiness=10" | tee -a /etc/sysctl.conf || { log "ERROR: Failed to set
 echo "net.core.rmem_max=2097152" | tee -a /etc/sysctl.conf || { log "ERROR: Failed to set rmem_max"; exit 1; }
 echo "net.core.wmem_max=2097152" | tee -a /etc/sysctl.conf || { log "ERROR: Failed to set wmem_max"; exit 1; }
 
-# Clone and build QGC
-log "Cloning QGroundControl repository..."
-progress 50
-mkdir -p ~/src || { log "ERROR: Failed to create src directory"; exit 1; }
-cd ~/src || { log "ERROR: Failed to change directory"; exit 1; }
-git clone --recursive https://github.com/mavlink/qgroundcontrol.git || { log "ERROR: Failed to clone repository"; exit 1; }
-
-log "Building QGroundControl..."
-progress 60
-cd qgroundcontrol || { log "ERROR: Failed to enter qgroundcontrol directory"; exit 1; }
-mkdir build && cd build || { log "ERROR: Failed to create/enter build directory"; exit 1; }
-cmake .. || { log "ERROR: CMAKE configuration failed"; exit 1; }
-
-# Determine optimal number of cores
-CORES=$(nproc)
-log "Compiling with $CORES cores..."
-progress 70
-make -j$CORES || { log "ERROR: Compilation failed"; exit 1; }
-
-# Create desktop entries
-log "Creating desktop entries..."
+# Create desktop entry
+log "Creating desktop entry..."
 progress 80
 cat > /usr/share/applications/qgroundcontrol.desktop << EOF || { log "ERROR: Failed to create desktop entry"; exit 1; }
 [Desktop Entry]
 Type=Application
 Name=QGroundControl
 Comment=Ground Control Station
-Path=/home/pi/src/qgroundcontrol/build
-Exec=/home/pi/src/qgroundcontrol/build/QGroundControl
+Exec=/usr/local/bin/QGroundControl
 Terminal=false
 Categories=Utility;
 EOF
