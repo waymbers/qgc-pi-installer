@@ -26,7 +26,7 @@ Automated installation script for QGroundControl on Raspberry Pi 4 with 4G/LTE s
 ## Quick Install
 
 ```bash
-wget -O install_qgc.sh https://raw.githubusercontent.com/yourusername/qgc-pi-installer/main/install_qgc.sh
+wget -O install_qgc.sh https://raw.githubusercontent.com/waymbers/qgc-pi-installer/main/install_qgc.sh
 chmod +x install_qgc.sh
 ./install_qgc.sh
 '''
