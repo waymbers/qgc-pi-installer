@@ -1,6 +1,3 @@
-## qgc-pi-installer
-Streamlined, single-command installer for QGroundControl on Raspberry Pi 4 with 4G/LTE support. Features automatic dependency management, system optimization, and headless installation capability. Perfect for drone ground stations and remote vehicle control setups.
-
 ## QGroundControl Raspberry Pi Installer
 
 Automated installation script for QGroundControl on Raspberry Pi 4 with 4G/LTE support.
@@ -29,4 +26,3 @@ Automated installation script for QGroundControl on Raspberry Pi 4 with 4G/LTE s
 wget -O install_qgc.sh https://raw.githubusercontent.com/waymbers/qgc-pi-installer/main/install_qgc.sh
 chmod +x install_qgc.sh
 ./install_qgc.sh
-'''
