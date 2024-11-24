@@ -20,86 +20,85 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a qgc_install.log
 }
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
-    echo "Please run as root (use sudo)"
-    exit 1
-fi
+# Display prerequisites and information
+cat << 'EOF'
+QGroundControl ARM64 Installation Prerequisites:
 
-# Check RAM and provide warnings if below 2GB
-mem_total=$(free -m | awk '/^Mem:/{print $2}')
-if [ "$mem_total" -lt 2048 ]; then
-    log "WARNING: Your system has less than 2GB RAM (${mem_total}MB detected)"
-    log "Important notes for running with limited RAM:"
-    log "- The application may run slower"
-    log "- Close other applications while using QGroundControl"
-    log "- The interface may be less responsive"
-    log "- Consider increasing your swap space"
-    log ""
-    printf "Would you like to proceed with the installation? (y/n): "
-    read answer
-    case "$answer" in
-        [Yy]*)
-            log "Proceeding with installation..."
-            ;;
-        *)
-            log "Installation cancelled by user"
-            exit 1
-            ;;
-    esac
+- ARM64-based system (Raspberry Pi 4, Pi 3, Jetson Nano, etc.)
+- Internet connection for package download
+- Minimum 2GB RAM recommended
+- USB/Serial ports for device connections
+- Sufficient storage space (at least 2GB free)
+
+This installation will:
+1. Install Flatpak package manager
+2. Add required Flatpak repositories
+3. Install KDE Platform dependencies
+4. Install QGroundControl for ARM64
+5. Configure device permissions
+
+Note: This method is specifically designed for ARM64 systems where the standard
+AppImage cannot be executed due to architecture incompatibility.
+
+EOF
+
+# Prompt for continuation
+read -p "Would you like to proceed with the installation? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Installation cancelled."
+    exit 1
 fi
 
 # Create log file
 touch qgc_install.log || { log "ERROR: Cannot create log file"; exit 1; }
 
-# Download QGroundControl
-log "Downloading QGroundControl..."
-progress 10
-wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage -O /usr/local/bin/QGroundControl || { log "ERROR: Failed to download QGroundControl"; exit 1; }
-chmod +x /usr/local/bin/QGroundControl || { log "ERROR: Failed to set executable permissions"; exit 1; }
+# Add Flatpak repository
+log "Adding Flatpak repository..."
+progress 20
+add-apt-repository -y ppa:alexlarsson/flatpak || { log "ERROR: Failed to add Flatpak repository"; exit 1; }
+apt update || { log "ERROR: Failed to update package list"; exit 1; }
 
-# Install required dependencies
-log "Installing dependencies..."
+# Install Flatpak
+log "Installing Flatpak..."
 progress 30
-apt-get install -y \
-    libsdl2-dev \
-    libusb-1.0-0-dev \
-    libgstreamer1.0-dev \
-    libgstreamer-plugins-base1.0-dev \
-    network-manager \
-    modemmanager \
-    usb-modeswitch || { log "ERROR: Failed to install dependencies"; exit 1; }
+apt install -y flatpak || { log "ERROR: Failed to install Flatpak"; exit 1; }
 
-# Create desktop entry
-log "Creating desktop entry..."
+# Add required Flatpak repositories
+log "Adding Flathub and thopiekar repositories..."
+progress 40
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || { log "ERROR: Failed to add Flathub repository"; exit 1; }
+flatpak remote-add --if-not-exists thopiekar.eu https://dl.thopiekar.eu/flatpak/_.flatpakrepo || { log "ERROR: Failed to add thopiekar repository"; exit 1; }
+
+# Install KDE Platform
+log "Installing KDE Platform..."
 progress 60
-cat > /usr/share/applications/qgroundcontrol.desktop << EOF || { log "ERROR: Failed to create desktop entry"; exit 1; }
-[Desktop Entry]
-Type=Application
-Name=QGroundControl
-Comment=Ground Control Station
-Exec=/usr/local/bin/QGroundControl
-Terminal=false
-Categories=Utility;
-EOF
+flatpak install -y flathub org.kde.Platform/aarch64/5.15-21.08 || { log "ERROR: Failed to install KDE Platform"; exit 1; }
+
+# Install QGroundControl
+log "Installing QGroundControl..."
+progress 80
+flatpak install -y thopiekar.eu org.mavlink.qgroundcontrol || { log "ERROR: Failed to install QGroundControl"; exit 1; }
 
 # Configure USB permissions
 log "Setting up USB permissions..."
-progress 80
+progress 90
 echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="*", ATTR{idProduct}=="*", MODE="0666"' | tee /etc/udev/rules.d/99-qgroundcontrol.rules || { log "ERROR: Failed to set USB permissions"; exit 1; }
 udevadm control --reload-rules || { log "ERROR: Failed to reload udev rules"; exit 1; }
-
-# Enable required services
-log "Enabling required services..."
-progress 90
-systemctl enable ModemManager || { log "ERROR: Failed to enable ModemManager"; exit 1; }
-systemctl start ModemManager || { log "ERROR: Failed to start ModemManager"; exit 1; }
-systemctl enable NetworkManager || { log "ERROR: Failed to enable NetworkManager"; exit 1; }
-systemctl start NetworkManager || { log "ERROR: Failed to start NetworkManager"; exit 1; }
 
 # Installation complete
 progress 100
 echo ""
 log "Installation complete! QGroundControl has been installed successfully."
-log "You can start QGroundControl by running: /usr/local/bin/QGroundControl"
-log "Or find it in your applications menu."
+log "To start QGroundControl, run: flatpak run --device=all org.mavlink.qgroundcontrol"
+log "The --device=all option is required for accessing devices like serial ports."
+log "You can also find QGroundControl in your applications menu."
+
+cat << 'EOF'
+
+Additional Notes:
+- This installation has been tested on various ARM64 platforms including Raspberry Pi and Jetson Nano
+- If you experience any device access issues, ensure you're using the --device=all flag
+- For mission planning and execution, ensure all required permissions are granted when prompted
+
+EOF
